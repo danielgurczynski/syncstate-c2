@@ -1,0 +1,22 @@
+{
+  "name": "syncstate-c2",
+  "version": "0.0.1",
+  "description": "Local-first distributed state synchronization for collaborative TypeScript applications",
+  "license": "MIT",
+  "author": "danielgurczynski",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielgurczynski/syncstate-c2.git"
+  },
+  "scripts": {
+    "test": "echo \"no tests yet\""
+  },
+  "keywords": [
+    "typescript",
+    "local-first",
+    "crdt",
+    "synchronization",
+    "distributed-systems",
+    "real-time"
+  ]
+}
