@@ -1,66 +1,35 @@
-/**
- * Represents a Hybrid Logical Clock timestamp, which combines physical time
- * with a counter to ensure a total ordering of events across distributed systems.
- */
-export interface HLCTimestamp {
-  /**
-   * The physical time component, typically from `Date.now()`.
-   */
-  time: number;
-
-  /**
-   * A counter to distinguish events that occur at the same physical time.
-   * This is incremented for each event within the same millisecond.
-   */
-  counter: number;
-
-  /**
-   * The ID of the client that generated the timestamp.
-   */
-  clientId: string;
-}
+import { HLCTimestamp } from './hlc';
 
 /**
- * Describes a single, atomic mutation to the state tree.
- * The format is inspired by Immer patches for simplicity.
- *
- * @template T The type of the value being changed.
+ * A Patch represents a single, atomic change to the state tree.
+ * This format is inspired by JSON Patch (RFC 6902), but simplified.
  */
-export interface Patch<T = any> {
-  /**
-   * The operation to perform.
-   * 'set': Set or add a value at the given path.
-   * 'del': Delete the value at the given path.
-   */
-  op: 'set' | 'del';
-
-  /**
-   * A path to the location in the state tree to modify.
-   * e.g., ['todos', '1', 'completed']
-   */
+export interface Patch {
+  op: 'add' | 'replace' | 'remove';
   path: (string | number)[];
-
-  /**
-   * The value to apply. Required for 'set' operations.
-   */
-  value?: T;
+  value?: any;
 }
 
 /**
- * Represents a complete, timestamped operation that can be broadcast
- * to other clients and persisted to storage. It bundles a patch with
- * metadata required for synchronization and conflict resolution.
- *
- * @template T The type of the value in the patch.
+ * An Operation bundles one or more patches into a single transactional unit.
+ * It includes metadata about when and where the change originated.
  */
-export interface Operation<T = any> {
+export interface Operation {
   /**
-   * The unique, ordered identifier for this operation, using a Hybrid Logical Clock.
+   * The Hybrid Logical Clock timestamp. This is the primary mechanism for
+   * ordering operations across all clients in a distributed environment.
+   * It ensures causality and provides a total ordering of events.
    */
-  timestamp: HLCTimestamp;
+  hlcTime: HLCTimestamp;
 
   /**
-   * The patch describing the state change.
+   * The ID of the client that created the operation.
+   * This should correspond to the `nodeId` in the HLCTimestamp.
    */
-  patch: Patch<T>;
+  author: string;
+
+  /**
+   * An array of patch objects describing the state mutation.
+   */
+  patches: Patch[];
 }
