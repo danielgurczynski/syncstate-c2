@@ -3,5 +3,5 @@ Local-first distributed state synchronization for collaborative TypeScript appli
 
 
 <!-- progress -->
-_Day 2/90 — Defines the core data structures for state synchronization, including the Operation, Patch, and HLCTimestamp interfaces._
+_Day 3/90 — Introduces a Hybrid Logical Clock (HLC) implementation for generating unique, causally-ordered timestamps for operations. This is a foundational component for ensuring consistent event ordering across distributed clients._
 <!-- /progress -->
