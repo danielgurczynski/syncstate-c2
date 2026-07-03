@@ -1,84 +1,44 @@
 /**
- * A Hybrid Logical Clock (HLC) timestamp.
- * Combines physical time with a logical counter to ensure a total ordering of events
- * in a distributed system, even with clock skew.
+ * A string representation of a Hybrid Logical Clock timestamp.
+ * Format: `ISO_TIMESTAMP-COUNTER-NODE_ID`
+ * It is lexicographically sortable.
  */
-export interface HLCTimestamp {
-  /** The physical time component, from `Date.now()`. */
-  time: number;
-  /** A logical counter to differentiate events within the same millisecond. */
-  counter: number;
-  /** The unique identifier of the node that generated the timestamp. */
-  nodeId: string;
-}
+export type HlcTimestamp = string;
 
 /**
- * Implements a Hybrid Logical Clock.
- * This class manages the state of the clock for a single node and provides methods
- * to generate and update timestamps to ensure causal ordering.
+ * Hybrid Logical Clock implementation for generating monotonic, distributed-friendly timestamps.
+ * Ensures that event ordering is consistent across all clients, even with clock skew.
+ * Based on the HLC paper by Kulkarni, et al.
  */
 export class HLC {
-  private lastTime: number;
-  private counter: number;
+  private count: number = 0;
+  private lastTime: number = 0;
+  public readonly nodeId: string;
 
-  constructor(public readonly nodeId: string, initialTime: number = Date.now()) {
-    this.lastTime = initialTime;
-    this.counter = 0;
+  constructor(nodeId: string) {
+    if (!nodeId) throw new Error('HLC node ID cannot be empty');
+    this.nodeId = nodeId;
   }
 
   /**
-   * Generates a new, unique HLC timestamp for a local event.
-   * @param wallTime The current physical time, usually `Date.now()`.
+   * Generates a new HLC timestamp based on the current wall time.
+   * @param wallTime The current wall time (e.g., Date.now()). For testing purposes.
+   *
    */
-  public now(wallTime: number = Date.now()): HLCTimestamp {
-    const physicalTime = wallTime;
+  public now(wallTime: number = Date.now()): HlcTimestamp {
+    const wallTimeMs = Math.floor(wallTime);
 
-    if (physicalTime > this.lastTime) {
-      this.lastTime = physicalTime;
-      this.counter = 0;
+    if (wallTimeMs > this.lastTime) {
+      this.lastTime = wallTimeMs;
+      this.count = 0;
     } else {
-      this.counter++;
+      // Time stayed the same or went backwards, increment counter
+      this.count++;
     }
 
-    return {
-      time: this.lastTime,
-      counter: this.counter,
-      nodeId: this.nodeId,
-    };
-  }
+    const time = new Date(this.lastTime).toISOString();
+    const counter = this.count.toString(16).padStart(4, '0');
 
-  /**
-   * Updates the local clock based on a received remote timestamp.
-   * This must be called when an event is received from another node.
-   * @param remote The HLC timestamp from the remote event.
-   * @param wallTime The current physical time, usually `Date.now()`.
-   */
-  public receive(remote: HLCTimestamp, wallTime: number = Date.now()): void {
-    const localTimeBefore = this.lastTime;
-
-    this.lastTime = Math.max(localTimeBefore, remote.time, wallTime);
-
-    if (this.lastTime === localTimeBefore && this.lastTime === remote.time) {
-      this.counter = Math.max(this.counter, remote.counter) + 1;
-    } else if (this.lastTime === localTimeBefore) {
-      this.counter++;
-    } else if (this.lastTime === remote.time) {
-      this.counter = remote.counter + 1;
-    } else { // this.lastTime must be wallTime
-      this.counter = 0;
-    }
-  }
-
-  /**
-   * Compares two HLC timestamps to determine their causal order.
-   * Returns > 0 if a > b, < 0 if a < b, 0 if a === b.
-   * Tie-breaks using nodeId if time and counter are identical.
-   */
-  public static compare(a: HLCTimestamp, b: HLCTimestamp): number {
-    if (a.time !== b.time) return a.time - b.time;
-    if (a.counter !== b.counter) return a.counter - b.counter;
-    if (a.nodeId > b.nodeId) return 1;
-    if (a.nodeId < b.nodeId) return -1;
-    return 0;
+    return `${time}-${counter}-${this.nodeId}`;
   }
 }
