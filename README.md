@@ -3,5 +3,5 @@ Local-first distributed state synchronization for collaborative TypeScript appli
 
 
 <!-- progress -->
-_Day 4/90 — Establishes the fundamental data structures for state changes. Defines the `Operation` interface to encapsulate a modification, and the `Patch` interface, which uses the JSON Patch standard._
+_Day 5/90 — Defines the core `Operation` and `Patch` interfaces, which are the fundamental data structures for tracking and synchronizing state changes. Operations are timestamped with an HLC to ensure proper ordering across clients._
 <!-- /progress -->
