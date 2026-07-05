@@ -3,5 +3,5 @@ Local-first distributed state synchronization for collaborative TypeScript appli
 
 
 <!-- progress -->
-_Day 5/90 — Defines the core `Operation` and `Patch` interfaces, which are the fundamental data structures for tracking and synchronizing state changes. Operations are timestamped with an HLC to ensure proper ordering across clients._
+_Day 6/90 — Defines the core data structures `Operation` and `Patch` in `src/core/types.ts`. These interfaces are fundamental for representing and ordering state changes across distributed clients._
 <!-- /progress -->
