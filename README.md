@@ -3,5 +3,5 @@ Local-first distributed state synchronization for collaborative TypeScript appli
 
 
 <!-- progress -->
-_Day 6/90 — Defines the core data structures `Operation` and `Patch` in `src/core/types.ts`. These interfaces are fundamental for representing and ordering state changes across distributed clients._
+_Day 7/90 — Introduces a simple observable store for managing state. The new 'createStore' factory supports state subscriptions and a middleware pipeline for processing incoming patches before they are applied._
 <!-- /progress -->
