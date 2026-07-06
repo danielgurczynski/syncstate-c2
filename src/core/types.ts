@@ -1,69 +1,73 @@
-/**
- * A Hybrid Logical Clock timestamp string.
- * Format: `YYYY-MM-DDTHH:MM:SS.SSSZ-<counter>-<nodeId>`
- * Example: `2023-10-27T10:00:00.000Z-0001-abcde`
- */
-export type HlcTimestamp = string;
+import { HLC } from './hlc';
 
 /**
- * Represents the type of a patch operation.
- * - `set`: Sets or replaces a value at a given path.
- * - `delete`: Removes a value at a given path.
+ * A unique identifier for a node/client in the distributed system.
  */
-export type PatchOp = 'set' | 'delete';
+export type NodeId = string;
 
 /**
- * Describes a single atomic change to the state tree.
- * This is inspired by formats like JSON Patch, but simplified for performance.
- *
- * @template T The type of the value being set.
+ * A patch describes a change to a JSON-like object, similar to JSON Patch (RFC 6902).
  */
-export interface Patch<T = any> {
-  /**
-   * The operation to perform.
-   */
-  op: PatchOp;
-
-  /**
-   * An array of keys/indices specifying the location of the change.
-   * Example: `['users', '123', 'name']` targets `state.users['123'].name`.
-   */
-  path: (string | number)[];
-
-  /**
-   * The new value to be set. Only present for the 'set' operation.
-   */
-  value?: T;
+export interface Patch {
+  op: 'add' | 'remove' | 'replace';
+  path: string; // e.g., '/todos/0/completed'
+  value?: any; // The value to add or replace with. Not used for 'remove'.
 }
 
 /**
- * A complete, globally-ordered unit of change in the system.
- * An Operation wraps one or more patches that occurred atomically.
- *
- * @template TState The overall state shape. Not directly used in patches,
- * but useful for typing stores and other higher-level constructs.
+ * Represents a single, atomic change to the state.
+ * Operations are the source of truth and are persisted in a log.
  */
-export interface Operation<TState = Record<string, any>> {
+export interface Operation {
   /**
-   * A unique identifier for this operation. Typically a concatenation of
-   * the client ID and a local sequence number.
+   * Hybrid Logical Clock timestamp for total ordering.
    */
-  id: string;
+  hlc: HLC;
+  /**
+   * The node that originated this operation.
+   */
+  origin: NodeId;
+  /**
+   * The specific patch to be applied to the state.
+   */
+  patch: Patch;
+}
+
+/**
+ * A listener function that gets called with the new state on change.
+ */
+export type Listener<S> = (state: S) => void;
+
+/**
+ * A function to unsubscribe a listener.
+ */
+export type Unsubscribe = () => void;
+
+/**
+ * The middleware function signature.
+ * It receives the current state and the patch being applied, and can return
+ * a modified patch, or null to block the update.
+ */
+export type Middleware<S> = (state: Readonly<S>, patch: Patch) => Patch | null;
+
+/**
+ * The core API of a SyncState store.
+ */
+export interface Store<S> {
+  /**
+   * Returns the current state.
+   */
+  getState: () => S;
 
   /**
-   * The Hybrid Logical Clock timestamp when the operation was created.
-   * This is the primary sorting key for ensuring causality and convergence.
+   * Dispatches a patch to be applied to the state.
+   * The patch will be processed by middleware before being applied.
    */
-  timestamp: HlcTimestamp;
+  apply: (patch: Patch) => void;
 
   /**
-   * The unique identifier of the client that generated this operation.
+   * Subscribes a listener function to state changes.
+   * Returns an unsubscribe function.
    */
-  clientId: string;
-
-  /**
-   * An array of patches that constitute this operation.
-   * Grouping patches allows for atomic updates to multiple parts of the state tree.
-   */
-  patches: Patch[];
+  subscribe: (listener: Listener<S>) => Unsubscribe;
 }
