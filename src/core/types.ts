@@ -1,73 +1,47 @@
-import { HLC } from './hlc';
-
 /**
- * A unique identifier for a node/client in the distributed system.
+ * A Hybrid Logical Clock timestamp.
+ * Format: [wall_time, counter, node_id]
  */
-export type NodeId = string;
-
-/**
- * A patch describes a change to a JSON-like object, similar to JSON Patch (RFC 6902).
- */
-export interface Patch {
-  op: 'add' | 'remove' | 'replace';
-  path: string; // e.g., '/todos/0/completed'
-  value?: any; // The value to add or replace with. Not used for 'remove'.
-}
+export type HLC = [number, number, string];
 
 /**
  * Represents a single, atomic change to the state.
- * Operations are the source of truth and are persisted in a log.
  */
 export interface Operation {
-  /**
-   * Hybrid Logical Clock timestamp for total ordering.
-   */
-  hlc: HLC;
-  /**
-   * The node that originated this operation.
-   */
-  origin: NodeId;
-  /**
-   * The specific patch to be applied to the state.
-   */
-  patch: Patch;
+  /** Unique ID for the operation, typically an HLC timestamp string. */
+  id: string;
+  /** The type of patch, e.g., 'set', 'delete', 'list-insert'. */
+  op: string;
+  /** The path to the value being changed. */
+  path: string;
+  /** The new value for the operation. */
+  value?: any;
 }
 
 /**
- * A listener function that gets called with the new state on change.
+ * A function that is called when the state changes.
  */
-export type Listener<S> = (state: S) => void;
+export type StateListener = () => void;
 
 /**
- * A function to unsubscribe a listener.
+ * An observable store that holds state and allows subscriptions to changes.
  */
-export type Unsubscribe = () => void;
-
-/**
- * The middleware function signature.
- * It receives the current state and the patch being applied, and can return
- * a modified patch, or null to block the update.
- */
-export type Middleware<S> = (state: Readonly<S>, patch: Patch) => Patch | null;
-
-/**
- * The core API of a SyncState store.
- */
-export interface Store<S> {
+export interface ObservableStore<T> {
   /**
    * Returns the current state.
    */
-  getState: () => S;
+  getState: () => T;
 
   /**
-   * Dispatches a patch to be applied to the state.
-   * The patch will be processed by middleware before being applied.
+   * Updates the state with a partial new state.
+   * Can accept an object or a function that returns an object.
    */
-  apply: (patch: Patch) => void;
+  setState: (partial: Partial<T> | ((state: T) => Partial<T>)) => void;
 
   /**
-   * Subscribes a listener function to state changes.
-   * Returns an unsubscribe function.
+   * Subscribes a listener function to be called on every state change.
+   * @param listener The function to call on change.
+   * @returns An unsubscribe function.
    */
-  subscribe: (listener: Listener<S>) => Unsubscribe;
+  subscribe: (listener: StateListener) => () => void;
 }
