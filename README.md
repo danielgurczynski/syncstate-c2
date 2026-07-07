@@ -3,5 +3,5 @@ Local-first distributed state synchronization for collaborative TypeScript appli
 
 
 <!-- progress -->
-_Day 7/90 — Introduces a simple observable store for managing state. The new 'createStore' factory supports state subscriptions and a middleware pipeline for processing incoming patches before they are applied._
+_Day 8/90 — Implements the core `createObservableStore` function, providing a reactive foundation for managing and subscribing to state changes. This store includes `getState`, `setState`, and `subscribe` methods, mirroring common patterns in modern state management._
 <!-- /progress -->
