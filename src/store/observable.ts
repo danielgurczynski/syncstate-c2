@@ -1,87 +1,39 @@
-import { Patch, Listener, Middleware, Unsubscribe } from '../core/types';
+import type { ObservableStore, StateListener } from '../core/types';
 
 /**
- * Applies a patch to a state object immutably.
- * This is a simplified implementation and does not support the full JSON Patch spec.
- * Throws an error for invalid paths.
+ * Creates a new observable store instance.
+ * This is the reactive core that holds application state.
+ * @param initialState The initial state for the store.
+ * @returns An instance of an ObservableStore.
  */
-function applyPatch<S>(state: S, patch: Patch): S {
-  const newState = JSON.parse(JSON.stringify(state)); // Simple deep clone for immutability
-  const pathParts = patch.path.substring(1).split('/'); // '/a/b' -> ['a', 'b']
+export function createObservableStore<T extends object>(
+  initialState: T
+): ObservableStore<T> {
+  let state: T = initialState;
+  const listeners: Set<StateListener> = new Set();
 
-  if (patch.path === '/') {
-    if (patch.op === 'replace') {
-      return patch.value;
-    }
-    throw new Error(`Invalid operation '${patch.op}' on root path`);
-  }
+  const getState = (): T => state;
 
-  let current: any = newState;
-  for (let i = 0; i < pathParts.length - 1; i++) {
-    current = current?.[pathParts[i]];
-    if (typeof current !== 'object' || current === null) {
-      throw new Error(`Invalid path in patch: ${patch.path}`);
-    }
-  }
+  const setState = (
+    partial: Partial<T> | ((state: T) => Partial<T>)
+  ): void => {
+    const nextPartial =
+      typeof partial === 'function' ? partial(state) : partial;
 
-  const finalKey = pathParts[pathParts.length - 1];
-
-  switch (patch.op) {
-    case 'replace':
-    case 'add':
-      current[finalKey] = patch.value;
-      break;
-    case 'remove':
-      delete current[finalKey];
-      break;
-    default:
-      throw new Error(`Unsupported patch operation: ${(patch as any).op}`);
-  }
-
-  return newState;
-}
-
-/**
- * Creates a new observable store for managing state.
- * @param initialState The initial state of the store.
- * @param middleware An array of middleware functions to process patches.
- */
-export function createStore<S>(
-  initialState: S,
-  middleware: Middleware<S>[] = []
-) {
-  let state: S = initialState;
-  const listeners = new Set<Listener<S>>();
-
-  const getState = () => state;
-
-  const apply = (patch: Patch) => {
-    let finalPatch: Patch | null = patch;
-
-    for (const mw of middleware) {
-      if (!finalPatch) break;
-      finalPatch = mw(state, finalPatch);
-    }
-
-    if (!finalPatch) {
-      return; // Middleware blocked the patch
-    }
-
-    try {
-      const nextState = applyPatch(state, finalPatch);
-      state = nextState;
-      listeners.forEach((listener) => listener(state));
-    } catch (e) {
-      console.error('Failed to apply patch:', finalPatch, e);
+    if (nextPartial) {
+      state = { ...state, ...nextPartial };
+      // Notify all listeners about the state change.
+      listeners.forEach((listener) => listener());
     }
   };
 
-  const subscribe = (listener: Listener<S>): Unsubscribe => {
+  const subscribe = (listener: StateListener): (() => void) => {
     listeners.add(listener);
+    // Return an unsubscribe function to allow cleanup.
     return () => {
       listeners.delete(listener);
     };
   };
 
-  return { getState, apply, subscribe };
+  return { getState, setState, subscribe };
 }
